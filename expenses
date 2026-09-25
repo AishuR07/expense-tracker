@@ -1,0 +1,107 @@
+import sqlite3
+
+DATABASE_NAME = "expenses.db"
+
+
+def connect_db():
+    return sqlite3.connect(DATABASE_NAME)
+
+
+def create_table():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL NOT NULL,
+            description TEXT,
+            date TEXT NOT NULL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def add_transaction(transaction_type, category, amount, description, date):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO transactions
+        (type, category, amount, description, date)
+        VALUES (?, ?, ?, ?, ?)
+    """, (transaction_type, category, amount, description, date))
+
+    conn.commit()
+    conn.close()
+
+
+def get_transactions():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT * FROM transactions
+        ORDER BY date DESC
+    """)
+
+    transactions = cursor.fetchall()
+    conn.close()
+
+    return transactions
+
+
+def delete_transaction(transaction_id):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM transactions WHERE id = ?",
+        (transaction_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def update_transaction(transaction_id, category, amount, description, date):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE transactions
+        SET category = ?, amount = ?, description = ?, date = ?
+        WHERE id = ?
+    """, (category, amount, description, date, transaction_id))
+
+    conn.commit()
+    conn.close()
+
+
+def get_summary():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(amount), 0)
+        FROM transactions
+        WHERE type = 'Income'
+    """)
+    income = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(amount), 0)
+        FROM transactions
+        WHERE type = 'Expense'
+    """)
+    expenses = cursor.fetchone()[0]
+
+    conn.close()
+
+    balance = income - expenses
+
+    return income, expenses, balance
